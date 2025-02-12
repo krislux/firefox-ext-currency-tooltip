@@ -18,6 +18,7 @@ Go to any website with prices in $ or $.
 Quick benchmarks:
 
 Steampowered.com front page: ~300 ms without cached currency rates, ~20 ms cached.
+
 Amazon.com front page: ~350 ms without cached currency rates, ~5 ms cached.
 
 ## Installation

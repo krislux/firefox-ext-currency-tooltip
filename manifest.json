@@ -5,6 +5,10 @@
 
   "description": "Adds tooltip with local currency to foreign prices",
 
+  "icons": {
+    "48": "icons/icon48.png"
+  },
+
   "permissions": [
     "storage",
     "activeTab",
@@ -20,7 +24,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["src/main.js"],
+      "js": ["src/main.js", "src/lib.js"],
       "run_at": "document_end"
     }
   ]

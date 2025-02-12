@@ -1,17 +1,38 @@
+let selectedCurrency = 'DKK';
+
 async function loadConversions() {
     console.info('Currency extension: Loading conversion rates from web');
 
     try {
         const apiKey = await browser.storage.local.get('apiKey');
-        const apiUrl = `https://v6.exchangerate-api.com/v6/${apiKey.apiKey}/latest/DKK`;
+        const apiUrl = `https://v6.exchangerate-api.com/v6/${apiKey.apiKey}/latest/${selectedCurrency}`;
 
-        if (!apiKey) {
-            throw new Error('Currency extension: API key not found. Set in extension options before use.');
+        if (! apiKey.apiKey) {
+            const msg = 'Currency extension: API key not found. Set in extension options before use.';
+
+            addElement({
+                tag: 'div',
+                text: msg,
+                css: {
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    background: '#c00',
+                    color: '#fff',
+                    padding: '10px',
+                    textAlign: 'center',
+                    zIndex: 1000
+                }
+            });
+
+            throw new Error(msg);
         }
 
         const response = await browser.runtime.sendMessage({
             url: apiUrl
         });
+
         return response.conversion_rates;
     } catch (error) {
         console.error(error);
@@ -54,7 +75,7 @@ async function findCurrencies(currencyTable) {
 
         if (conversionRate) {
             const convertedValue = (value / conversionRate).toFixed(2);
-            node.parentElement.setAttribute('title', '≈ ' + convertedValue + ' DKK');
+            node.parentElement.setAttribute('title', `≈ ${convertedValue} ${selectedCurrency}`);
 
             node.parentElement.style.textDecoration = 'underline dotted #f00c';
         }
@@ -62,11 +83,27 @@ async function findCurrencies(currencyTable) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    selectedCurrency = (await browser.storage.local.get('currency')).currency;
+    console.info('Currency extension. Selected currency: ' + selectedCurrency);
+
     const t1 = (new Date).getTime();
     console.info('Currency extension. Loaded');
 
-    const currencyTable = JSON.parse(sessionStorage.getItem('currencyTable')) || await loadConversions();
+    let currencyTable;
+    const currencyNotChanged = sessionStorage.getItem('storedCurrency') === selectedCurrency
+
+    if (currencyNotChanged) {
+        currencyTable = JSON.parse(sessionStorage.getItem('currencyTable'));
+    } else {
+        currencyTable = await loadConversions();
+    }
+
+    if (! currencyTable) {
+        throw new Error('Currency extension: No conversion rates found. Check API key and internet connection.');
+    }
+
     sessionStorage.setItem('currencyTable', JSON.stringify(currencyTable));
+    sessionStorage.setItem('storedCurrency', selectedCurrency);
 
     findCurrencies(currencyTable);
     const t2 = (new Date).getTime();
