@@ -6,6 +6,11 @@ const symbolTable = {
     '£': 'GBP',
 };
 
+/**
+ * Load conversion rates from external API.
+ *
+ * @return {Promise<Object>} - The conversion rates.
+ */
 async function loadConversions() {
     console.info('Currency extension: Loading conversion rates from web');
 
@@ -16,6 +21,7 @@ async function loadConversions() {
         if (! apiKey.apiKey) {
             const msg = 'Currency extension: API key not found. Set in extension options before use.';
 
+            // Show error message on page
             addElement({
                 tag: 'div',
                 text: msg,
@@ -42,10 +48,16 @@ async function loadConversions() {
         return response.conversion_rates;
     } catch (error) {
         console.error(error);
-        return [];
+        return {};
     }
 }
 
+/**
+ * Find and convert currencies in the document.
+ *
+ * @param {Object} currencyTable - The conversion rates from loadConversions().
+ * @return {void}
+ */
 async function findCurrencies(currencyTable) {
     const currencyRegex = /(\$|€)\s?\d+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?\s?(\$|€)/g;
 
@@ -85,11 +97,54 @@ async function findCurrencies(currencyTable) {
 
         if (conversionRate) {
             const convertedValue = (value / conversionRate).toFixed(2);
-            node.parentElement.setAttribute('title', `≈ ${convertedValue} ${selectedCurrency}`);
+            const parent = node.parentElement;
 
-            node.parentElement.style.textDecoration = 'underline dotted #f00c';
+            parent.style.textDecoration = 'underline dotted #f00c';
+            if (parent.style.position !== 'absolute') {
+                parent.style.position = 'relative';
+            }
+            addElement({
+                parent: parent,
+                tag: 'div',
+                css: {
+                    position: 'absolute',
+                    top: 0,
+                    width: '100%',
+                    height: '100%',
+                    zIndex: 9998,
+                    pointerEvents: 'auto',
+                }
+            }).addEventListener('mouseover', event => {
+                showPopup(event, `≈ ${convertedValue} ${selectedCurrency}`);
+            });
         }
     }
+}
+
+let popup = null;
+function showPopup(event, text) {
+    if (!popup) {
+        popup = addElement({
+            tag: 'div',
+            css: {
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                background: '#000',
+                opacity: 0.75,
+                color: '#fff',
+                padding: '4px 8px',
+                borderRadius: '5px',
+                zIndex: 9999,
+                pointerEvents: 'none',
+                font: '14px sans-serif'
+            }
+        });
+    }
+
+    popup.textContent = text;
+    popup.style.top = (event.clientY + 10) + 'px';
+    popup.style.left = (event.clientX + 10) + 'px';
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -116,6 +171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     sessionStorage.setItem('storedCurrency', selectedCurrency);
 
     findCurrencies(currencyTable);
+
     const t2 = (new Date).getTime();
     console.info('Currency extension. Took: ' + (t2 - t1) + ' ms');
 });

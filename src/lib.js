@@ -3,6 +3,7 @@
  *
  * @param {Object} element - The element configuration object.
  * @param {string} element.tag - The tag name of the element to create.
+ * @param {Object} element.parent - The parent element to append the new element to (optional).
  * @param {string} [element.text] - The text content of the element (optional).
  * @param {Object} [element.css] - An object with CSS properties and values to apply to the element (optional).
  */
@@ -19,7 +20,11 @@ function addElement(element) {
         }
     }
 
-    document.body.appendChild(el);
+    if (element.parent) {
+        element.parent.appendChild(el);
+    } else {
+        document.body.appendChild(el);
+    }
 
     return el;
 }
