@@ -1,6 +1,6 @@
 # Currency Tooltip Extension
 
-Simple Firefox extension that converts prices in $ or € on any website to DKK.
+Simple Firefox extension that converts prices in $, € or £ on any website to DKK.
 Made for personal use, and is not currently very configurable. Changing the target currency requires changing the code.
 
 Currently hard locked to exchangerate-api.com for currency rates.
@@ -11,7 +11,7 @@ Prices denoted with `$` will be assumed to be USD. Does not currently respond to
 
 Get a free API key from [ExchangeRate-API](https://www.exchangerate-api.com/).
 Paste the API key in the options page of the extension.
-Go to any website with prices in $ or $.
+Go to any website with prices in $, € or £.
 
 ## Benchmarks
 

@@ -1,5 +1,11 @@
 let selectedCurrency = 'DKK';
 
+const symbolTable = {
+    '€': 'EUR',
+    '$': 'USD',
+    '£': 'GBP',
+};
+
 async function loadConversions() {
     console.info('Currency extension: Loading conversion rates from web');
 
@@ -66,8 +72,12 @@ async function findCurrencies(currencyTable) {
 
         if (!value || !symbol) continue;
 
-        if (symbol === '€') symbol = 'EUR';
-        if (symbol === '$') symbol = 'USD';
+        for (let key in symbolTable) {
+            if (symbol === key) {
+                symbol = symbolTable[key];
+                break;
+            }
+        }
 
         value = parseFloat(value.replace(',', '.'));
 
