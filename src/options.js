@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         notify('API key saved');
     });
 
-    document.getElementById('currency-list').addEventListener('change', async event => {
+    document.getElementById('currency-form').addEventListener('submit', async event => {
         event.preventDefault();
         browser.storage.local.set({currency: event.target.value});
 
