@@ -12,19 +12,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         notify('API key saved');
     });
 
-    document.getElementById('currency-form').addEventListener('submit', async event => {
+    document.getElementById('options-form').addEventListener('submit', async event => {
         event.preventDefault();
-        browser.storage.local.set({currency: event.target.value});
+        browser.storage.local.set({currency: document.getElementById('currency-list').value});
+        browser.storage.local.set({decorate: document.getElementById('decorate-found').checked});
 
-        notify('Currency saved');
+        notify('Options saved');
     });
 
-    const result = await browser.storage.local.get('apiKey');
-    if (result.apiKey) {
-        document.getElementById('apiKey').value = result.apiKey;
-
-        updateCurrencyList(result.apiKey);
+    const apiKey = await browser.storage.local.get('apiKey');
+    if (apiKey.apiKey) {
+        document.getElementById('apiKey').value = apiKey.apiKey;
+        updateCurrencyList(apiKey.apiKey);
     }
+
+    const decorateValue = await browser.storage.local.get('decorate');
+    // !== false because undefined should count as true (default true)
+    document.getElementById('decorate-found').checked = decorateValue.decorate !== false;
 });
 
 function updateCurrencyList(apiKey) {

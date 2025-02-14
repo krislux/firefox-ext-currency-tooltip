@@ -1,4 +1,5 @@
 let selectedCurrency = 'DKK';
+let decorateFound = true;
 
 const symbolTable = {
     '€': 'EUR',
@@ -119,7 +120,9 @@ function addTooltipToElement({node, match, convertedValue}) {
     // Create a new span element to wrap the matched text
     const span = document.createElement('span');
     span.textContent = match[0];
-    span.style.textDecoration = 'underline dotted #f00c';
+    if (decorateFound) {
+        span.style.textDecoration = 'underline dotted #f00c';
+    }
     span.style.position = 'relative';
 
     // Replace the matched text with the new span element
@@ -190,6 +193,8 @@ function showPopup(event, text) {
 
 window.addEventListener('load', async () => {
     selectedCurrency = (await browser.storage.local.get('currency')).currency;
+    decorateFound = (await browser.storage.local.get('decorate')).decorate;
+
     console.info('Currency extension. Selected currency: ' + selectedCurrency);
 
     const t1 = (new Date).getTime();

@@ -7,20 +7,34 @@
     <section>
         <h1>Currency Converter Tooltip Options</h1>
         <form action="#" id="apikey-form">
-            <p>Get a free API key from
-                <a target="_blank" href="https://exchangerate-api.com">exchangerate-api.com</a>,
-                then paste it here
-            </p>
+            <fieldset>
+                <p>Get a free API key from
+                    <a target="_blank" href="https://exchangerate-api.com">exchangerate-api.com</a>,
+                    then paste it here
+                </p>
 
-            <label for="apiKey">API Key:</label>
-            <input type="text" id="apiKey">
-            <button type="submit" id="save">Save</button>
+                <p class="pad">
+                    <label for="apiKey">API Key:</label>
+                    <input type="text" id="apiKey">
+                    <button type="submit" id="save">Save</button>
+                </p>
+            </fieldset>
         </form>
 
-        <form action="#" id="currency-form">
-            <label for="currency-list">Target currency: </label>
-            <select id="currency-list"></select>
-            <button type="submit" id="save">Save</button>
+        <form action="#" id="options-form">
+            <fieldset>
+                <p>
+                    <label for="currency-list">Target currency: </label>
+                    <select id="currency-list"></select>
+                </p>
+
+                <p class="pad">
+                    <input type="checkbox" id="decorate-found">
+                    <label for="decorate-found">Underline found prices</label>
+                </p>
+            </fieldset>
+
+            <input type="submit" id="save" value="Save">
         </form>
     </section>
 
@@ -39,13 +53,20 @@
             margin: 0 auto;
         }
 
-        form {
+        fieldset {
             margin: 2rem 0;
             padding: 2rem;
             border: 1px solid #ddd;
         }
-        form > p {
-            margin-top: 0;
+        fieldset p {
+            margin: 0;
+        }
+        fieldset p.pad {
+            padding-top: 2rem;
+        }
+
+        input[type="submit"] {
+            padding: 0.5rem 1.5rem;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -54,7 +75,7 @@
                 color: #fff;
             }
 
-            form {
+            fieldset {
                 border: 1px solid #555;
             }
 
