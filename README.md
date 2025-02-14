@@ -1,24 +1,32 @@
-# Currency Tooltip Extension
+# Currency Converter Tooltip
 
-Simple Firefox extension that converts prices in $ or € on any website to DKK.
-Made for personal use, and is not currently very configurable. Changing the target currency requires changing the code.
+Simple Firefox extension that converts prices in $, € or £ on any website to a currency of your choice.
 
-Currently hard locked to exchangerate-api.com for currency rates.
+Currently uses ExchangeRate-API.com to get the latest currency rates. No particular reason for this choice, other than they have a free tier that should be enough for everyone.
 
-Prices denoted with `$` will be assumed to be USD. Does not currently respond to e.g. AUD or CAD suffixes.
+**Note**: Prices denoted with `$` will be assumed to be USD. Does not currently respond to e.g. AUD or CAD suffixes.
 
 ## Usage
 
 Get a free API key from [ExchangeRate-API](https://www.exchangerate-api.com/).
-Paste the API key in the options page of the extension.
-Go to any website with prices in $ or $.
 
-## Benchmarks
+Go to the extension options: Click menu, then Add-ons and Themes, then the three dots next to the extension, then Options.
+
+Enter your API key and the currency you want to convert to.
+
+Go to any website with prices in $, € or £.
+
+## Performance
 
 Quick benchmarks:
 
-Steampowered.com front page: ~300 ms without cached currency rates, ~20 ms cached.
+Steampowered.com front page: ~300 ms without cached currency rates, ~30 ms cached.
+
 Amazon.com front page: ~350 ms without cached currency rates, ~5 ms cached.
+
+Wikipedia.org front page (a page with no prices), 5 ms cached.
+
+Obviously depends on computer power and website complexity, but it is quite fast and should not be noticeable.
 
 ## Installation
 

@@ -1,18 +1,89 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Currency Tooltip Extension Options</title>
+    <title>Currency Converter Tooltip Options</title>
 </head>
 <body>
-    <h1>Currency Tooltip Extension Options</h1>
-    <form action="#" id="options-form">
-        <p>Get a free API key from exchangerate-api.com, then paste it here</p>
+    <section>
+        <h1>Currency Converter Tooltip Options</h1>
+        <form action="#" id="apikey-form">
+            <fieldset>
+                <p>Get a free API key from
+                    <a target="_blank" href="https://exchangerate-api.com">exchangerate-api.com</a>,
+                    then paste it here
+                </p>
 
-        <label for="apiKey">API Key:</label>
-        <input type="text" id="apiKey">
-        <button type="submit" id="save">Save</button>
-    </form>
+                <p class="pad">
+                    <label for="apiKey">API Key:</label>
+                    <input type="text" id="apiKey">
+                    <button type="submit" id="save">Save</button>
+                </p>
+            </fieldset>
+        </form>
+
+        <form action="#" id="options-form">
+            <fieldset>
+                <p>
+                    <label for="currency-list">Target currency: </label>
+                    <select id="currency-list"></select>
+                </p>
+
+                <p class="pad">
+                    <input type="checkbox" id="decorate-found">
+                    <label for="decorate-found">Underline found prices</label>
+                </p>
+            </fieldset>
+
+            <input type="submit" id="save" value="Save">
+        </form>
+    </section>
 
     <script src="src/options.js"></script>
+
+    <style>
+
+        body {
+            background-color: #fff;
+            color: #333;
+            font-family: sans-serif;
+        }
+
+        section {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        fieldset {
+            margin: 2rem 0;
+            padding: 2rem;
+            border: 1px solid #ddd;
+        }
+        fieldset p {
+            margin: 0;
+        }
+        fieldset p.pad {
+            padding-top: 2rem;
+        }
+
+        input[type="submit"] {
+            padding: 0.5rem 1.5rem;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #333;
+                color: #fff;
+            }
+
+            fieldset {
+                border: 1px solid #555;
+            }
+
+            a:link, a:visited {
+                color: #3dd;
+            }
+        }
+
+    </style>
 </body>
 </html>
