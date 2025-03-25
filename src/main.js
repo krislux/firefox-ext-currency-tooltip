@@ -1,3 +1,6 @@
+// Local Test Mode (avoids API calls, works completely offline)
+const localTestMode = false;
+
 let selectedCurrency = 'DKK';
 let decorateFound = true;
 
@@ -192,7 +195,7 @@ function showPopup(event, text) {
 }
 
 window.addEventListener('load', async () => {
-    selectedCurrency = (await browser.storage.local.get('currency')).currency;
+    selectedCurrency = (await browser.storage.local.get('currency')).currency || selectedCurrency;
     decorateFound = (await browser.storage.local.get('decorate')).decorate;
 
     console.info('Currency extension. Selected currency: ' + selectedCurrency);
@@ -206,7 +209,17 @@ window.addEventListener('load', async () => {
     if (currencyNotChanged) {
         currencyTable = JSON.parse(sessionStorage.getItem('currencyTable'));
     } else {
-        currencyTable = await loadConversions();
+        if (localTestMode === true) {
+            // For debugging purposes, use fixed conversion rates
+            currencyTable = {
+                DKK: 1,
+                EUR: 1/7.5,
+                USD: 1/6.5,
+                GBP: 1/8.5,
+            };
+        } else {
+            currencyTable = await loadConversions();
+        }
     }
 
     if (! currencyTable) {
