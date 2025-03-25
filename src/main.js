@@ -1,7 +1,9 @@
-// Local Test Mode (avoids API calls, works completely offline)
-const localTestMode = false;
+const debugging = /@temporary-addon$/.test(browser.runtime.id);
 
-const logging = true;
+// Local Test Mode (avoids API calls, works completely offline)
+const localTestMode = debugging;
+
+const logging = debugging;
 
 // Cache currency table for 24 hours
 const cacheMinutes = 60 * 24;
