@@ -1,6 +1,11 @@
 // Local Test Mode (avoids API calls, works completely offline)
 const localTestMode = false;
 
+const logging = true;
+
+// Cache currency table for 24 hours
+const cacheMinutes = 60 * 24;
+
 let selectedCurrency = 'DKK';
 let decorateFound = true;
 
@@ -18,13 +23,31 @@ let popup = null;
  * @return {Promise<Object>} - The conversion rates.
  */
 async function loadConversions() {
-    console.info('Currency extension: Loading conversion rates from web');
+    let currencyData = await getConfig('cachedCurrencyData');
+    let cachedTime = await getConfig('cachedTime');
+
+    if (localTestMode === true) {
+        log('Using fixed debug conversion rates');
+        return {
+            DKK: 1,
+            EUR: 1/7.5,
+            USD: 1/6.5,
+            GBP: 1/8.5,
+        };
+    }
+
+    if (cachedTime && Date.now() - cachedTime < 1000 * 60 * cacheMinutes) {
+        log('Using cached conversion rates');
+        return currencyData;
+    }
+
+    log('Loading conversion rates from web');
 
     try {
-        const apiKey = await browser.storage.local.get('apiKey');
-        const apiUrl = `https://v6.exchangerate-api.com/v6/${apiKey.apiKey}/latest/${selectedCurrency}`;
+        const apiKey = await getConfig('apiKey');
+        const apiUrl = `https://v6.exchangerate-api.com/v6/${apiKey}/latest/${selectedCurrency}`;
 
-        if (! apiKey.apiKey) {
+        if (! apiKey) {
             const msg = 'Currency extension: API key not found. Set in extension options before use.';
 
             // Show error message on page
@@ -51,7 +74,14 @@ async function loadConversions() {
             url: apiUrl
         });
 
-        return response.conversion_rates;
+        currencyData = response.conversion_rates;
+
+        browser.storage.local.set({
+            cachedCurrencyData: currencyData,
+            cachedTime: Date.now()
+        });
+
+        return currencyData;
     } catch (error) {
         console.error(error);
         return {};
@@ -194,43 +224,33 @@ function showPopup(event, text) {
     popup.style.display = 'block';
 }
 
-window.addEventListener('load', async () => {
-    selectedCurrency = (await browser.storage.local.get('currency')).currency || selectedCurrency;
-    decorateFound = (await browser.storage.local.get('decorate')).decorate;
+async function getConfig(key) {
+    return (await browser.storage.local.get(key))[key];
+}
 
-    console.info('Currency extension. Selected currency: ' + selectedCurrency);
+function log(text) {
+    if (logging) {
+        console.info('Currency extension: ', text);
+    }
+}
+
+window.addEventListener('load', async () => {
+    selectedCurrency = (await getConfig('currency')) || selectedCurrency;
+    decorateFound = !!await getConfig('decorate');
+
+    log('Selected currency: ' + selectedCurrency);
 
     const t1 = (new Date).getTime();
-    console.info('Currency extension. Loaded');
 
     let currencyTable;
-    const currencyNotChanged = sessionStorage.getItem('storedCurrency') === selectedCurrency
-
-    if (currencyNotChanged) {
-        currencyTable = JSON.parse(sessionStorage.getItem('currencyTable'));
-    } else {
-        if (localTestMode === true) {
-            // For debugging purposes, use fixed conversion rates
-            currencyTable = {
-                DKK: 1,
-                EUR: 1/7.5,
-                USD: 1/6.5,
-                GBP: 1/8.5,
-            };
-        } else {
-            currencyTable = await loadConversions();
-        }
-    }
+    currencyTable = await loadConversions();
 
     if (! currencyTable) {
         throw new Error('Currency extension: No conversion rates found. Check API key and internet connection.');
     }
 
-    sessionStorage.setItem('currencyTable', JSON.stringify(currencyTable));
-    sessionStorage.setItem('storedCurrency', selectedCurrency);
-
     findCurrencies(currencyTable);
 
     const t2 = (new Date).getTime();
-    console.info('Currency extension. Took: ' + (t2 - t1) + ' ms');
+    log('Took: ' + (t2 - t1) + ' ms');
 });
