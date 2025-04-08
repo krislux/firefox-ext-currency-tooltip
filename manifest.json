@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Currency Converter Tooltip",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Adds mouseover popup with configurable local currency to elements with foreign prices.",
   "icons": {
     "48": "icons/icon48.png"
