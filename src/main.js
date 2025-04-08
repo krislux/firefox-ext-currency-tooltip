@@ -1,7 +1,7 @@
 const debugging = /@temporary-addon$/.test(browser.runtime.id);
 
 // Local Test Mode (avoids API calls, works completely offline)
-const localTestMode = debugging;
+const localTestMode = false;
 
 const logging = debugging;
 
@@ -241,6 +241,9 @@ async function inDomainWhitelist() {
     if (debugging && window.location.hostname === '') return true;
 
     const whitelist = (await getConfig('whitelist')) || [];
+
+    if (whitelist.length === 0 || whitelist[0].trim() === '') return true;
+
     const domain = window.location.hostname.replace(/^(www\.)/, '');
     return whitelist.some(item => new RegExp(`(^|://|\\.)${item.replace('.', '\\.')}$`).test(domain));
 }
