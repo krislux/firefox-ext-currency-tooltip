@@ -236,7 +236,20 @@ function log(text) {
     }
 }
 
+async function inDomainWhitelist() {
+    // local file
+    if (debugging && window.location.hostname === '') return true;
+
+    const whitelist = (await getConfig('whitelist')) || [];
+    const domain = window.location.hostname.replace(/^(www\.)/, '');
+    return whitelist.some(item => new RegExp(`(^|://|\\.)${item.replace('.', '\\.')}$`).test(domain));
+}
+
 window.addEventListener('load', async () => {
+    const inWhitelist = await inDomainWhitelist();
+    log('In whitelist: ' + inWhitelist);
+    if (!inWhitelist) return;
+
     selectedCurrency = (await getConfig('currency')) || selectedCurrency;
     decorateFound = !!await getConfig('decorate');
 

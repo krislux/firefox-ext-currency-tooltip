@@ -34,6 +34,16 @@
                 </p>
             </fieldset>
 
+            <fieldset>
+                <p>
+                    <label for="domain-whitelist">Domain whitelist</label>
+                </p>
+
+                <p class="pad">
+                    <textarea id="domain-whitelist" rows="10"></textarea>
+                </p>
+            </fieldset>
+
             <input type="submit" id="save" value="Save">
         </form>
     </section>
@@ -63,6 +73,11 @@
         }
         fieldset p.pad {
             padding-top: 2rem;
+        }
+
+        textarea {
+            display: block;
+            width: 100%;
         }
 
         input[type="submit"] {

@@ -17,6 +17,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         browser.storage.local.set({currency: document.getElementById('currency-list').value});
         browser.storage.local.set({decorate: document.getElementById('decorate-found').checked});
 
+        let whitelist = [];
+        document.getElementById('domain-whitelist').value.split(/[\r\n]+/g).forEach(domain => {
+            // Add domain to whitelist, trimming whitespace and http(s):// and www.
+            if (domain.trim().length === 0) return;
+            domain = domain.replace(/^(https?:\/\/)?(www\.)?/, '');
+            domain = domain.replace(/\/$/, '');
+            whitelist.push(domain.trim());
+        });
+        browser.storage.local.set({whitelist});
+
         notify('Options saved');
     });
 
@@ -29,6 +39,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const decorateValue = await browser.storage.local.get('decorate');
     // !== false because undefined should count as true (default true)
     document.getElementById('decorate-found').checked = decorateValue.decorate !== false;
+
+    document.getElementById('domain-whitelist').value = (await browser.storage.local.get('whitelist')).whitelist.join('\n');
 });
 
 function updateCurrencyList(apiKey) {
