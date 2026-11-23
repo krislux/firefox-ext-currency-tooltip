@@ -1,7 +1,7 @@
 let selectedCurrency = 'DKK';
 
 document.addEventListener('DOMContentLoaded', async () => {
-    selectedCurrency = (await browser.storage.local.get('currency')).currency;
+    selectedCurrency = (await browser.storage.local.get('currency')).currency || selectedCurrency;
 
     document.getElementById('apikey-form').addEventListener('submit', async event => {
         event.preventDefault();
@@ -14,7 +14,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('options-form').addEventListener('submit', async event => {
         event.preventDefault();
-        browser.storage.local.set({currency: document.getElementById('currency-list').value});
+        // Currency list is empty until an API key is set; don't overwrite the saved currency with ''
+        const currency = document.getElementById('currency-list').value;
+        if (currency) {
+            selectedCurrency = currency;
+            browser.storage.local.set({currency});
+        }
         browser.storage.local.set({decorate: document.getElementById('decorate-found').checked});
 
         let whitelist = [];
@@ -40,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // !== false because undefined should count as true (default true)
     document.getElementById('decorate-found').checked = decorateValue.decorate !== false;
 
-    document.getElementById('domain-whitelist').value = (await browser.storage.local.get('whitelist')).whitelist.join('\n');
+    document.getElementById('domain-whitelist').value = ((await browser.storage.local.get('whitelist')).whitelist || []).join('\n');
 });
 
 function updateCurrencyList(apiKey) {

@@ -27,6 +27,7 @@ let popup = null;
 async function loadConversions() {
     let currencyData = await getConfig('cachedCurrencyData');
     let cachedTime = await getConfig('cachedTime');
+    let cachedBase = await getConfig('cachedBase');
 
     if (localTestMode === true) {
         log('Using fixed debug conversion rates');
@@ -38,7 +39,9 @@ async function loadConversions() {
         };
     }
 
-    if (cachedTime && Date.now() - cachedTime < 1000 * 60 * cacheMinutes) {
+    // Rates are relative to the selected currency, so the cache is only valid for the same base
+    if (currencyData && cachedBase === selectedCurrency
+        && cachedTime && Date.now() - cachedTime < 1000 * 60 * cacheMinutes) {
         log('Using cached conversion rates');
         return currencyData;
     }
@@ -76,10 +79,16 @@ async function loadConversions() {
             url: apiUrl
         });
 
+        // Don't cache failed responses (invalid key, quota exceeded etc.)
+        if (response?.result !== 'success' || !response.conversion_rates) {
+            throw new Error('Currency extension: API error: ' + (response?.['error-type'] || 'unknown'));
+        }
+
         currencyData = response.conversion_rates;
 
         browser.storage.local.set({
             cachedCurrencyData: currencyData,
+            cachedBase: selectedCurrency,
             cachedTime: Date.now()
         });
 
@@ -254,7 +263,7 @@ window.addEventListener('load', async () => {
     if (!inWhitelist) return;
 
     selectedCurrency = (await getConfig('currency')) || selectedCurrency;
-    decorateFound = !!await getConfig('decorate');
+    decorateFound = (await getConfig('decorate')) !== false;
 
     log('Selected currency: ' + selectedCurrency);
 
