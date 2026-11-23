@@ -3,6 +3,14 @@
   "name": "Currency Converter Tooltip",
   "version": "1.1.0",
   "description": "Adds mouseover popup with configurable local currency to elements with foreign prices.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{901a1053-72c5-4446-a759-b3dfb20a9177}",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
   "icons": {
     "48": "icons/icon48.png"
   },

@@ -1,9 +1,10 @@
-const debugging = /@temporary-addon$/.test(browser.runtime.id);
+// Set in init() from the install type stored by background.js (true when loaded as a temporary add-on)
+let debugging = false;
 
 // Local Test Mode (avoids API calls, works completely offline)
 const localTestMode = false;
 
-const logging = debugging;
+let logging = false;
 
 // Cache currency table for 24 hours
 const cacheMinutes = 60 * 24;
@@ -394,6 +395,8 @@ async function inDomainWhitelist() {
 }
 
 async function init() {
+    debugging = logging = (await getConfig('debugging')) === true;
+
     const inWhitelist = await inDomainWhitelist();
     log('In whitelist: ' + inWhitelist);
     if (!inWhitelist) return;
