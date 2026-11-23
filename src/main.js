@@ -50,8 +50,6 @@ async function loadConversions() {
 
     try {
         const apiKey = await getConfig('apiKey');
-        const apiUrl = `https://v6.exchangerate-api.com/v6/${apiKey}/latest/${selectedCurrency}`;
-
         if (! apiKey) {
             const msg = 'Currency extension: API key not found. Set in extension options before use.';
 
@@ -76,7 +74,8 @@ async function loadConversions() {
         }
 
         const response = await browser.runtime.sendMessage({
-            url: apiUrl
+            apiKey,
+            base: selectedCurrency
         });
 
         // Don't cache failed responses (invalid key, quota exceeded etc.)
@@ -99,115 +98,206 @@ async function loadConversions() {
     }
 }
 
+// Attribute marking elements created or already handled by this extension
+const MARKER = 'data-currency-tooltip';
+
+// Number with optional thousands/decimal separators, plus "19,--" / "19,-" style whole prices
+const NUMBER_PATTERN = String.raw`\d+(?:[.,]\d+)*(?:[.,]-{1,2})?`;
+const SYMBOL_PATTERN = String.raw`[$€£]`;
+
+// Every price needs a symbol on one side. Groups: 1 = symbol before, 2 = value, 3 = value, 4 = symbol after
+const PRICE_SOURCE = `(${SYMBOL_PATTERN})\\s?(${NUMBER_PATTERN})|(${NUMBER_PATTERN})\\s?(${SYMBOL_PATTERN})`;
+const priceRegex = new RegExp(PRICE_SOURCE, 'g');
+const hasPriceRegex = new RegExp(PRICE_SOURCE);
+const exactPriceRegex = new RegExp(`^\\s*(?:${PRICE_SOURCE})\\s*$`);
+const symbolOnlyRegex = new RegExp(`^\\s*${SYMBOL_PATTERN}\\s*$`);
+
+// Text inside these is never touched
+const SKIP_SELECTOR = `script, style, noscript, textarea, template, [contenteditable], [${MARKER}]`;
+
+// How many ancestors to check when a price is split across elements, e.g. <span>$</span><span>19.99</span>
+const splitPriceMaxDepth = 3;
+
 /**
- * Find and convert currencies in the document.
+ * Find and convert currencies in a subtree.
  *
+ * @param {Node} root - Element or text node to search.
  * @param {Object} currencyTable - The conversion rates from loadConversions().
  * @return {void}
  */
-async function findCurrencies(currencyTable) {
-    const currencyRegex = /(\$|€|£)\s{0,1}?\d+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?\s{0,1}?(\$|€|£)/g;
+function findCurrencies(root, currencyTable) {
+    const textNodes = [];
 
-    const walker = document.createTreeWalker(
-        document.body,
-        NodeFilter.SHOW_TEXT,
-        {
-            acceptNode: function(node) {
-                return node.nodeValue.match(currencyRegex)
-                    ? NodeFilter.FILTER_ACCEPT
-                    : NodeFilter.FILTER_SKIP;
-            }
-        },
-        false
-    );
-
-    let node;
-    let elementQueue = [];
-    while (node = walker.nextNode()) {
-        const match = node.textContent.match(/(\$|€|£)?\s?(\d{1,3}(?:[.,]?\d{3})*(?:[.,]\d{1,2})?)\s?(\$|€|£)?/);
-        if (! match) {
-            continue;
+    const accept = node => {
+        const text = node.nodeValue;
+        if (!hasPriceRegex.test(text) && !symbolOnlyRegex.test(text)) {
+            return NodeFilter.FILTER_SKIP;
         }
-
-        const [, symbolBefore, value, symbolAfter] = match;
-        let symbol = symbolBefore || symbolAfter;
-
-        if (!value || !symbol) {
-            continue;
+        // Only checked for nodes that look like prices, so the closest() lookup stays cheap
+        if (!node.parentElement || node.parentElement.closest(SKIP_SELECTOR)) {
+            return NodeFilter.FILTER_SKIP;
         }
+        return NodeFilter.FILTER_ACCEPT;
+    };
 
-        for (let key in symbolTable) {
-            if (symbol === key) {
-                symbol = symbolTable[key];
-                break;
-            }
+    if (root.nodeType === Node.TEXT_NODE) {
+        if (accept(root) === NodeFilter.FILTER_ACCEPT) {
+            textNodes.push(root);
         }
-
-        const parsedValue = parseValue(value);
-
-        const conversionRate = currencyTable[symbol];
-
-        if (conversionRate) {
-            const convertedValue = (parsedValue / conversionRate).toFixed(2);
-
-            // Add the node to a queue to avoid changing the tree while iterating
-            elementQueue.push({node, match, convertedValue});
+    } else {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {acceptNode: accept});
+        let node;
+        while (node = walker.nextNode()) {
+            textNodes.push(node);
         }
     }
 
-    // Iterate over the queue and replace the text nodes with new elements
-    elementQueue.forEach(addTooltipToElement);
+    // Modify the tree only after walking it
+    for (const node of textNodes) {
+        if (symbolOnlyRegex.test(node.nodeValue)) {
+            handleSplitPrice(node, currencyTable);
+        } else {
+            wrapPricesInTextNode(node, currencyTable);
+        }
+    }
 }
 
-function addTooltipToElement({node, match, convertedValue}) {
-    const parent = node.parentElement;
-    // Create a new span element to wrap the matched text
-    const span = document.createElement('span');
-    span.textContent = match[0];
-    if (decorateFound) {
-        span.style.textDecoration = 'underline dotted #f00c';
+/**
+ * Convert a regex match from priceRegex/exactPriceRegex to a tooltip text, or null if unsupported.
+ */
+function convertMatch(match, currencyTable) {
+    const symbol = match[1] || match[4];
+    const value = match[2] || match[3];
+    const conversionRate = currencyTable[symbolTable[symbol]];
+
+    if (!conversionRate) {
+        return null;
     }
-    span.style.position = 'relative';
 
-    // Replace the matched text with the new span element
-    const beforeText = document.createTextNode(node.nodeValue.slice(0, match.index));
-    const afterText = document.createTextNode(node.nodeValue.slice(match.index + match[0].length));
-    parent.insertBefore(beforeText, node);
-    parent.insertBefore(span, node);
-    parent.insertBefore(afterText, node);
-    parent.removeChild(node);
+    const parsedValue = parseValue(value);
+    if (!isFinite(parsedValue)) {
+        return null;
+    }
 
+    return '≈ ' + formatCurrency(parsedValue / conversionRate);
+}
+
+/**
+ * Wrap every price in a text node in its own span with a tooltip.
+ */
+function wrapPricesInTextNode(node, currencyTable) {
+    const text = node.nodeValue;
+    const fragment = document.createDocumentFragment();
+    let lastIndex = 0;
+    let found = false;
+
+    for (const match of text.matchAll(priceRegex)) {
+        const tooltip = convertMatch(match, currencyTable);
+        if (!tooltip) continue;
+
+        found = true;
+        fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+
+        const span = document.createElement('span');
+        span.textContent = match[0];
+        fragment.appendChild(span);
+        attachTooltip(span, tooltip);
+
+        lastIndex = match.index + match[0].length;
+    }
+
+    if (!found) return;
+
+    fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+    node.parentNode.replaceChild(fragment, node);
+}
+
+/**
+ * A text node containing only a currency symbol may be part of a price split across elements,
+ * e.g. Amazon's <span>$</span><span>19<span>.</span></span><span>99</span>.
+ * Look a few ancestors up for an element whose full text is exactly one price.
+ */
+function handleSplitPrice(node, currencyTable) {
+    let element = node.parentElement;
+
+    for (let depth = 0; element && depth < splitPriceMaxDepth; depth++, element = element.parentElement) {
+        if (element === document.body || element.closest(SKIP_SELECTOR)) return;
+
+        const match = element.textContent.replace(/\s+/g, ' ').match(exactPriceRegex);
+        if (match) {
+            const tooltip = convertMatch(match, currencyTable);
+            if (tooltip) {
+                attachTooltip(element, tooltip);
+            }
+            return;
+        }
+    }
+}
+
+/**
+ * Mark an element as a found price and show the converted value on hover.
+ */
+function attachTooltip(element, tooltip) {
+    element.setAttribute(MARKER, '');
+
+    if (decorateFound) {
+        element.style.textDecoration = 'underline dotted #f00c';
+    }
+
+    // Only reposition elements that aren't already positioned, to avoid breaking site layouts
+    if (element.isConnected ? getComputedStyle(element).position === 'static' : !element.style.position) {
+        element.style.position = 'relative';
+    }
+
+    // Transparent overlay with a high z-index, so the tooltip still works if the site covers the price
     const mouseCatcher = addElement({
-        parent: span,
-        tag: 'div',
+        parent: element,
+        tag: 'span',
         css: {
             position: 'absolute',
             top: 0,
+            left: 0,
             width: '100%',
             height: '100%',
             zIndex: 9998,
             pointerEvents: 'auto',
         }
     });
+    mouseCatcher.setAttribute(MARKER, '');
     mouseCatcher.addEventListener('mouseover', event => {
-        showPopup(event, `≈ ${convertedValue} ${selectedCurrency}`);
+        showPopup(event, tooltip);
     });
     mouseCatcher.addEventListener('mouseout', () => {
-        popup.style.display = 'none';
+        if (popup) popup.style.display = 'none';
     });
 }
 
+/**
+ * Parse a price string in either US (1,299.00) or European (1.299,00) format.
+ * A final separator followed by 1-2 digits is the decimal point; all other separators are thousands separators.
+ */
 function parseValue(stringValue) {
-    const valueParts = stringValue.split(',');
-    let parsedValue = stringValue;
+    const value = stringValue.replace(/[.,]-{1,2}$/, '');
+    const lastSeparator = Math.max(value.lastIndexOf('.'), value.lastIndexOf(','));
 
-    if (valueParts.length === 2 && valueParts[1].length < 3) {
-        parsedValue = stringValue.replace(',', '.');
+    if (lastSeparator !== -1 && value.length - lastSeparator - 1 <= 2) {
+        const whole = value.slice(0, lastSeparator).replace(/[.,]/g, '');
+        return parseFloat(whole + '.' + value.slice(lastSeparator + 1));
     }
 
-    parsedValue = parseFloat(parsedValue.replaceAll(',', ''));
+    return parseFloat(value.replace(/[.,]/g, ''));
+}
 
-    return parsedValue;
+/**
+ * Format an amount in the selected currency using the browser's locale, e.g. "148,05 kr." for Danish.
+ */
+function formatCurrency(amount) {
+    try {
+        return new Intl.NumberFormat(undefined, {style: 'currency', currency: selectedCurrency}).format(amount);
+    } catch (error) {
+        // Unknown currency code
+        return `${amount.toFixed(2)} ${selectedCurrency}`;
+    }
 }
 
 function showPopup(event, text) {
@@ -227,12 +317,57 @@ function showPopup(event, text) {
                 font: '14px sans-serif'
             }
         });
+        // Popup text can itself look like a price (e.g. "≈ €19.99"), so mark it to be skipped
+        popup.setAttribute(MARKER, '');
     }
 
     popup.textContent = text;
     popup.style.top = (event.clientY + 10) + 'px';
     popup.style.left = (event.clientX + 10) + 'px';
     popup.style.display = 'block';
+}
+
+/**
+ * Watch for content added after the initial scan (infinite scroll, carousels, tab switches etc.).
+ * Only the added/changed nodes are scanned, in batches.
+ */
+function observeChanges(currencyTable) {
+    const pending = new Set();
+    let scheduled = false;
+
+    const observer = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+            if (mutation.type === 'characterData') {
+                pending.add(mutation.target);
+            } else {
+                mutation.addedNodes.forEach(node => pending.add(node));
+            }
+        }
+
+        if (pending.size && !scheduled) {
+            scheduled = true;
+            requestIdleCallback(flush, {timeout: 500});
+        }
+    });
+
+    const options = {childList: true, subtree: true, characterData: true};
+
+    function flush() {
+        scheduled = false;
+        const nodes = [...pending];
+        pending.clear();
+
+        for (const node of nodes) {
+            if (node.isConnected && (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE)) {
+                findCurrencies(node, currencyTable);
+            }
+        }
+
+        // Discard the mutations caused by our own changes. This runs synchronously, so no site changes are lost.
+        observer.takeRecords();
+    }
+
+    observer.observe(document.body, options);
 }
 
 async function getConfig(key) {
@@ -249,15 +384,16 @@ async function inDomainWhitelist() {
     // local file
     if (debugging && window.location.hostname === '') return true;
 
-    const whitelist = (await getConfig('whitelist')) || [];
+    const whitelist = ((await getConfig('whitelist')) || []).map(item => item.trim().toLowerCase()).filter(Boolean);
 
-    if (whitelist.length === 0 || whitelist[0].trim() === '') return true;
+    if (whitelist.length === 0) return true;
 
-    const domain = window.location.hostname.replace(/^(www\.)/, '');
-    return whitelist.some(item => new RegExp(`(^|://|\\.)${item.replace('.', '\\.')}$`).test(domain));
+    const domain = window.location.hostname.toLowerCase().replace(/^www\./, '');
+    // Match the domain itself and all subdomains
+    return whitelist.some(item => domain === item || domain.endsWith('.' + item));
 }
 
-window.addEventListener('load', async () => {
+async function init() {
     const inWhitelist = await inDomainWhitelist();
     log('In whitelist: ' + inWhitelist);
     if (!inWhitelist) return;
@@ -267,17 +403,21 @@ window.addEventListener('load', async () => {
 
     log('Selected currency: ' + selectedCurrency);
 
-    const t1 = (new Date).getTime();
+    const t1 = performance.now();
 
-    let currencyTable;
-    currencyTable = await loadConversions();
+    const currencyTable = await loadConversions();
 
-    if (! currencyTable) {
-        throw new Error('Currency extension: No conversion rates found. Check API key and internet connection.');
+    if (!currencyTable || Object.keys(currencyTable).length === 0) {
+        console.error('Currency extension: No conversion rates found. Check API key and internet connection.');
+        return;
     }
 
-    findCurrencies(currencyTable);
+    findCurrencies(document.body, currencyTable);
+    observeChanges(currencyTable);
 
-    const t2 = (new Date).getTime();
-    log('Took: ' + (t2 - t1) + ' ms');
-});
+    log('Took: ' + Math.round(performance.now() - t1) + ' ms');
+}
+
+// Content script runs at document_end, so the DOM is ready. No need to wait for images etc. to load,
+// as content added later is picked up by the MutationObserver.
+init();

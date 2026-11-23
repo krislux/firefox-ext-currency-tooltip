@@ -1,45 +1,86 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test page</title>
+</head>
+<body>
 
-<h1>Test page</h1>
-
-<p>
-    This stuff costs
+    <h1>Test page</h1>
 
     <p>
-        String with multiple prices: 50$ aksmdlkjasldkja lskjdl<br>
-        akjsdl kasjldk jasældkj alskdj laksjdlk ajldkjasd 4$ aasdlih.
+        This stuff costs
+
+        <p>
+            String with multiple prices: 50$ aksmdlkjasldkja lskjdl<br>
+            akjsdl kasjldk jasældkj alskdj laksjdlk ajldkjasd 4$ aasdlih.
+        </p>
+
+        <div>
+            <strong>Here it comes:</strong>
+            This costs $25/mo. That's nice.
+            <strong>Check this out!</strong>
+        </div>
+
+        <p>$5,000</p>
+        <p>$5,000,000</p>
+        <p>$5,000,000,000</p>
+
+        <p>410,50€</p>
+
+        <p>No price here</p>
+
+        <p>Symbol with no price €</p>
+
+        <div>50 €</div>
+
+        <div>
+            <span>
+                $ 200.25
+            </span>
+        </div>
+
+        <table>
+            <tr>
+                <th>50$</th>
+                <td>50 £</td>
+                <td>$50</td>
+                <td>$ 50</td>
+            </tr>
+        </table>
+
+        <h2>Multiple / mixed in one text node</h2>
+        <p>Save 50% - now 19,99€</p>
+        <p>2 for $5</p>
+        <p>Price range: $10 - $20</p>
+
+        <h2>Number formats</h2>
+        <p>$1234</p>
+        <p>€1234.56</p>
+        <p>1.299,00€ (should be 1299)</p>
+        <p>5.000€ (should be 5000)</p>
+        <p>19,--€</p>
+
+        <h2>Split across elements (Amazon style)</h2>
+        <p>
+            <span class="a-price">
+                <span aria-hidden="true"><span>$</span><span>19<span>.</span></span><span>99</span></span>
+            </span>
+        </p>
+        <p><span>24,99</span><span>€</span></p>
+
+        <h2>Should NOT be converted</h2>
+        <textarea>Typing $50 here must not be changed</textarea>
+        <div contenteditable>Editable €30 must not be changed</div>
+        <script>var price = '$99';</script>
+
+        <h2>Added after load (should be converted after ~1 second)</h2>
+        <div id="late"></div>
+        <script>
+            setTimeout(() => {
+                document.getElementById('late').innerHTML = '<p>Late price: 39,99€</p>';
+            }, 1000);
+        </script>
     </p>
-
-    <div>
-        <strong>Here it comes:</strong>
-        This costs $25/mo. That's nice.
-        <strong>Check this out!</strong>
-    </div>
-
-    <p>$5,000</p>
-    <p>$5,000,000</p>
-    <p>$5,000,000,000</p>
-
-    <p>410,50€</p>
-
-    <p>No price here</p>
-
-    <p>Symbol with no price €</p>
-
-    <div>50 €</div>
-
-    <div>
-        <span>
-            $ 200.25
-        </span>
-    </div>
-
-    <table>
-        <tr>
-            <th>50$</th>
-            <td>50 £</td>
-            <td>$50</td>
-            <td>$ 50</td>
-        </tr>
-    </table>
-</p>
+</body>
+</html>
